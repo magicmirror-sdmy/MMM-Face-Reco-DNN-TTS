@@ -112,84 +112,93 @@ Module.register('MMM-Face-Reco-DNN', {
   },
 
   // ----------------------------------------------------------------------------------------------------
-  login_user: function (name) {
-    var thisUserClasses;
-    var existingClasses;
-    var newClassList;
 
-    this.config.debug && Log.log('User list before login:' + this.users);
-    Log.log('Logged in user:' + name);
-    // user not currently logged in so add them to the list of logged in users
+login_user: function(name) {
+    // Log the current state if debugging is enabled
+    if (this.config.debug) {
+        Log.log('User list before login: ' + this.users);
+    }
+    Log.log('Logged in user: ' + name);
+    
+    // Add the new user to the logged-in users list
     this.users.push(name);
-    this.config.debug && Log.log('User list after login:' + this.users);
+    
+    if (this.config.debug) {
+        Log.log('User list after login: ' + this.users);
+    }
 
+    // Determine the existing classes based on the number of logged-in users
+    let existingClasses;
     if (this.users.length === 1) {
-      // this is the login of the first user
-      // this means we are coming from a noface state
-      existingClasses = this.config.classes_noface;
-    } else if (this.users.length > 1) {
-      // there is at least one user already logged in so the list of existing classes comes from this.userClasses
-      existingClasses = this.get_class_set(this.userClasses);
-    }
-
-    this.config.debug && Log.log('User Classes Before Login');
-    this.config.debug && Log.log(existingClasses);
-
-    // what we do here depends on if we recognise the user or not
-    if (name === 'unknown') {
-      // this is the state of an unknown face
-      // we want to show the new classes allowed by this target state (unknown state)
-      thisUserClasses = this.config.classes_unknown;
+        existingClasses = this.config.classes_noface;
     } else {
-      // this is the state of a known face
-      // we want to show the new classes allowed by this target state (known state)
-      // copy the config classes to a new array
-      var newClasses = this.config.classes_known.slice();
-      this.config.debug && Log.log('Adding ' + name + ' to classlist:' + this.config.classes_known);
-      // add the specific classes for this new known user
-      newClasses.push(name.toLowerCase());
-      thisUserClasses = newClasses;
+        existingClasses = this.get_class_set(this.userClasses);
     }
 
-    // add the new user's classes to the list of user classes
+    if (this.config.debug) {
+        Log.log('User Classes Before Login');
+        Log.log(existingClasses);
+    }
+
+    // Determine the classes for the new user
+    let thisUserClasses;
+    if (name === 'unknown') {
+        thisUserClasses = this.config.classes_unknown;
+    } else {
+        thisUserClasses = [...this.config.classes_known, name.toLowerCase()];
+        if (this.config.debug) {
+            Log.log('Adding ' + name + ' to classlist: ' + this.config.classes_known);
+        }
+    }
+
+    // Update the user classes map
     this.userClasses[name] = thisUserClasses;
-    this.config.debug && Log.log('User Classes After Login');
-    this.config.debug && Log.log(this.userClasses);
+    
+    if (this.config.debug) {
+        Log.log('User Classes After Login');
+        Log.log(this.userClasses);
+    }
 
-    // so the full list of all classes that should be shown is now in userClasses
-    newClassList = this.get_class_set(this.userClasses);
+    // Calculate the new class list
+    const newClassList = this.get_class_set(this.userClasses);
 
-    // show all the new classes from the new user except the existing classes
+    // Show and hide modules based on the new state
     this.show_modules(newClassList, existingClasses);
-
-    // we want to hide the old classes from the previous state, except those shown by the new user
     this.hide_modules(existingClasses, newClassList);
 
-    // now show a welcome message
+    // Display a welcome message if configured
     if (this.config.welcomeMessage) {
-      var person = name;
-      var welcomeMessage;
-
-      // We get unknown from Face-Reco and then it should be translated to stranger
-      if (person === 'unknown') {
-        person = this.translate('stranger');
-        welcomeMessage = this.translate('unknownlogin').replace('%person', person);
-      } else {
-        // set up the slightly different message for a known person, attempt to find a Name mapping for display purposes
-        var personDisplayName = person;
-        if (this.config.usernameDisplayMapping && this.config.usernameDisplayMapping[person]) {
-          personDisplayName = this.config.usernameDisplayMapping[person];
+        // Get the current time
+        const currentTime = new Date();
+        const currentHour = currentTime.getHours();
+        let greeting;
+        
+        // Determine the appropriate greeting based on the time of the day
+        if (currentHour < 12) {
+            greeting = 'Good morning';
+        } else if (currentHour < 18) {
+            greeting = 'Good afternoon';
+        } else {
+            greeting = 'Good evening';
         }
-        welcomeMessage = this.translate('knownlogin').replace('%person', personDisplayName);
-      }
+        
+        // Prepare the welcome message with the dynamic greeting
+        let welcomeMessage;
+        let person = (name === 'unknown') ? this.translate('stranger') : name;
+        const personDisplayName = (name !== 'unknown' && this.config.usernameDisplayMapping?.[name]) ? this.config.usernameDisplayMapping[name] : name;
 
-      this.sendNotification('SHOW_ALERT', {
-        type: 'notification',
-        message: welcomeMessage,
-        title: this.translate('title'),
-      });
+        welcomeMessage = `${greeting} ${personDisplayName}!`;
+
+        this.sendNotification('SHOW_ALERT', {
+            type: 'notification',
+            message: welcomeMessage,
+            title: this.translate('title')
+        });
     }
-  },
+},
+
+
+
 
   // ----------------------------------------------------------------------------------------------------
   logout_user: function (name) {
