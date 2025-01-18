@@ -54,7 +54,7 @@ Load this module directly from GitHub using the following commands.
 
 ```sh
 cd ~/MagicMirror/modules/
-git clone https://github.com/nischi/MMM-Face-Reco-DNN.git
+git clone https://github.com/magicmirror-sdmy/MMM-Face-Reco-DNN.git
 cd MMM-Face-Reco-DNN
 npm install
 ```
